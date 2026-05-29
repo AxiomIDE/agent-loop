@@ -61,3 +61,11 @@ nodes:
         and passes through.
       input: AgentMessage
       output: AgentMessage
+    - name: ReflectionProbe
+      description: |
+        Slice 5 / GAP-4 witness. Reads ax.reflection.flow.edges and surfaces
+        each conditional edge's condition summary (field/op/operands) into
+        context — proving reflection now exposes the dispatch operand for
+        idempotent AddTool decisions.
+      input: AgentMessage
+      output: AgentMessage
