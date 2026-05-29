@@ -1,0 +1,42 @@
+name: axiom-official/agent-loop
+version: 0.1.0
+language: python
+description: |
+    Agent-tool-loop demo package (knowledge/vision/agent-tool-loop-flow-pattern.md,
+    built incrementally per backlog/agent-tool-loop/PLAN.md).
+
+    A single shared AgentMessage flows through a scripted reasoner (LLMDriver),
+    mock tools, and a terminal (FlowComplete). The demo grows across slices:
+    slice 2 is the simplest back-edge loop — LLMDriver dispatches one fixed
+    tool (ToolEcho) per turn and terminates after a scripted turn budget.
+    Later slices add fan-out + JoinPassthrough, dynamic AddTool, and per-turn
+    join/compose reconfiguration.
+author: Axiom Official
+license: MIT
+tags:
+    - demo
+    - agent-tool-loop
+    - mutation
+    - agentic
+nodes:
+    - name: LLMDriver
+      description: |
+        Scripted deterministic reasoner. Increments the turn counter and sets
+        AgentMessage.status ("continue" → dispatch a tool and loop; "done" →
+        terminate). Reads its plan from the goal string (e.g. "turns=3"). Not
+        mutation_capable — it only decides.
+      input: AgentMessage
+      output: AgentMessage
+    - name: ToolEcho
+      description: |
+        Mock tool. Appends "tool#<iteration>" to the shared context and loops
+        the message back to LLMDriver via the seed flow's loop edge.
+      input: AgentMessage
+      output: AgentMessage
+    - name: FlowComplete
+      description: |
+        Terminal node. LLMDriver routes here on status=="done". Passes the
+        accumulated AgentMessage through so the loop transcript is the flow's
+        final output.
+      input: AgentMessage
+      output: AgentMessage

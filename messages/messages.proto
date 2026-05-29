@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package axiom_official.agent_loop;
+
+option go_package = "axiom-official/agent-loop/gen";
+
+// AgentMessage is the single shared message that flows through the agent
+// tool-loop (knowledge/vision/agent-tool-loop-flow-pattern.md). Every node
+// consumes and produces AgentMessage, so every edge is trivially typed and
+// the loop-back adapter is identity.
+message AgentMessage {
+  // The user-supplied objective. In the mocked demo it also encodes the
+  // deterministic driver script, e.g. "turns=3" (do 2 tool turns, then
+  // terminate on turn 3). Parsed by LLMDriver.
+  string goal = 1;
+
+  // Additive accumulator. Each node appends a marker (e.g. "reason#1",
+  // "tool#1") so the terminal output is a deterministic transcript of the
+  // whole loop — the e2e asserts against this exact string.
+  string context = 2;
+
+  // Tool names to dispatch THIS turn. This is the vision's conditional-
+  // dispatch field; it is populated from slice 2 on but only drives fan-out
+  // routing (ANY over repeated) from slice 3. Slice 2 routes on `status`.
+  repeated string tools = 3;
+
+  // Routing discriminator set by LLMDriver each turn:
+  //   "continue" → dispatch a tool, loop back to the driver
+  //   "done"     → route to FlowComplete (terminal)
+  // Scalar so slice-2 routing uses simple EQ edge conditions (the
+  // repeated-`tools` ANY dispatch arrives in slice 3).
+  string status = 4;
+
+  // 1-based turn counter, incremented by LLMDriver on each turn. Bounds the
+  // loop alongside the loop edge's max_iterations.
+  int32 iteration = 5;
+}
