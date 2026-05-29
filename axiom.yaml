@@ -69,3 +69,19 @@ nodes:
         idempotent AddTool decisions.
       input: AgentMessage
       output: AgentMessage
+    - name: SearchTools
+      description: |
+        Slice 7 — the vision's marketplace search node (mocked). "Finds" a tool
+        and records it in context, then feeds JoinPassthrough.
+      input: AgentMessage
+      output: AgentMessage
+    - name: AddTool
+      description: |
+        Slice 7 / GAP-1 + GAP-4 — the vision's mutation emitter. Dynamically
+        splices agent-loop-dyntool's DynTool behind a conditional dispatch edge
+        ("DynTool" in tools), idempotently: it inspects reflection and skips if
+        DynTool is already wired, so it forks exactly once across the agent's
+        turns. The package's single mutation_capable node.
+      input: AgentMessage
+      output: AgentMessage
+      mutation_capable: true

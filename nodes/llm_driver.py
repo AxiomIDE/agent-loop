@@ -1,19 +1,16 @@
 # Agent-tool-loop (backlog/agent-tool-loop/PLAN.md): LLMDriver is the scripted,
-# deterministic stand-in for the vision doc's LLM reasoner. It is NOT
-# mutation_capable — it only decides. Determinism comes from encoding the
-# driver's plan in the goal string, so the e2e needs no model call and no
-# secrets.
+# deterministic stand-in for the vision doc's LLM reasoner. NOT mutation_capable
+# — it only decides. Determinism comes from encoding the plan in the goal string.
 """LLMDriver — scripted reasoner. Emits the per-turn dispatch + routing decision.
 
-The goal string carries the script:
-  - "turns=N"            → terminate (status="done") on turn N, else "continue".
-  - "tools=A,B,..."      → the tool names to dispatch each turn (the vision's
-                           `repeated tools` fan-out field). Defaults to
-                           ["ToolEcho"] (slice-2 single-tool back-edge loop).
+Goal-string script:
+  - "turns=N"        → terminate (status="done") on turn N, else "continue".
+  - "tools=A,B"      → tools dispatched EVERY turn (slices 2–5).
+  - "tN=A,B" / "tN=" → PER-TURN override for turn N (slice 7); empty value means
+                       dispatch nothing that turn (used on the terminate turn so
+                       only the FlowComplete branch fires).
 
-Each turn it increments `iteration`, sets `status`, and populates `tools`. The
-seed flow dispatches on `tools` membership (EQ on the repeated field) and routes
-on `status` (slice 2: directly off LLMDriver; slice 3+: after the join).
+Precedence per turn: tN override > tools= > default ["ToolEcho"].
 """
 from __future__ import annotations
 
@@ -36,26 +33,28 @@ def _turn_budget(goal: str) -> int:
         return DEFAULT_TURNS
 
 
-def _tools_for_run(goal: str) -> list[str]:
-    m = re.search(r"tools=([A-Za-z0-9_,]+)", goal or "")
-    if not m:
-        return list(DEFAULT_TOOLS)
-    names = [t for t in m.group(1).split(",") if t]
-    return names or list(DEFAULT_TOOLS)
+def _tools_for_turn(goal: str, n: int) -> list[str]:
+    g = goal or ""
+    # Per-turn override "tN=..." (anchored on start or ';' so it can't match
+    # inside "tools=" / "turns="). An explicit empty value → dispatch nothing.
+    m = re.search(rf"(?:^|;)t{n}=([A-Za-z0-9_,]*)", g)
+    if m is not None:
+        return [t for t in m.group(1).split(",") if t]
+    m2 = re.search(r"tools=([A-Za-z0-9_,]+)", g)
+    if m2:
+        names = [t for t in m2.group(1).split(",") if t]
+        return names or list(DEFAULT_TOOLS)
+    return list(DEFAULT_TOOLS)
 
 
 def llm_driver(ax: AxiomContext, input: AgentMessage) -> AgentMessage:
     n = max(int(input.iteration), 0) + 1
     budget = _turn_budget(input.goal)
-    tools = _tools_for_run(input.goal)
+    tools = _tools_for_turn(input.goal, n)
 
     out = AgentMessage()
     out.goal = input.goal
     out.iteration = n
-    # Dispatch the configured tools every turn. Whether the loop continues or
-    # terminates is decided by `status` routing (slice 2: off LLMDriver; slice
-    # 3+: after the join), NOT by clearing tools — so the join's incident edges
-    # stay satisfied on the terminal turn too.
     out.tools.extend(tools)
 
     if n < budget:
