@@ -1,5 +1,5 @@
 name: axiom-official/agent-loop
-version: 0.1.0
+version: 0.2.0
 language: python
 description: |
     Agent-tool-loop demo package (knowledge/vision/agent-tool-loop-flow-pattern.md,
@@ -38,5 +38,26 @@ nodes:
         Terminal node. LLMDriver routes here on status=="done". Passes the
         accumulated AgentMessage through so the loop transcript is the flow's
         final output.
+      input: AgentMessage
+      output: AgentMessage
+    - name: ToolA
+      description: |
+        Mock fan-out tool (slice 3). Appends "A#<iteration>" to the shared
+        context and passes through. Dispatched when "ToolA" is in tools.
+      input: AgentMessage
+      output: AgentMessage
+    - name: ToolB
+      description: |
+        Second mock fan-out tool (slice 3), parallel sibling of ToolA. Its
+        arrival is required by JoinPassthrough's JOIN_AND, so the flow only
+        completes if ToolB also fired this turn.
+      input: AgentMessage
+      output: AgentMessage
+    - name: JoinPassthrough
+      description: |
+        Fan-in merge node (slice 3). A JOIN_AND consumer over the fired tool
+        edges; a static ADR-045 compose_plan assembles its AgentMessage input
+        from an incident edge so the loop stays typed. Appends "join#<iteration>"
+        and passes through.
       input: AgentMessage
       output: AgentMessage
