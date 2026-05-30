@@ -57,7 +57,16 @@ def add_tool(ax: AxiomContext, input: AgentMessage) -> AgentMessage:
         return out
 
     try:
-        new_iid = ax.mutation.flow.add_node(package=DYNTOOL_PACKAGE, version=DYNTOOL_VERSION)
+        # Place DynTool directly above AddTool. Reflection (ReflectionNode) does
+        # not expose canvas x/y, so we can't read AddTool's runtime position to
+        # compute "above myself" dynamically — we anchor to AddTool's fixed
+        # fixture position (460, 400) and step up one canvas row (140). Without
+        # this, mutationcompile auto-places the node at emitterX+480 (940, 400).
+        new_iid = ax.mutation.flow.add_node(
+            package=DYNTOOL_PACKAGE,
+            version=DYNTOOL_VERSION,
+            canvas_position=(460.0, 260.0),
+        )
         # GAP-1: conditional dispatch edge LLMDriver -> DynTool (dormant unless the
         # reasoner puts "DynTool" in tools) - wired exactly like SearchTools/AddTool.
         ax.mutation.flow.add_edge(
