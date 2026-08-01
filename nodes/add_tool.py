@@ -65,6 +65,7 @@ def add_tool(ax: AxiomContext, input: AgentMessage) -> AgentMessage:
         new_iid = ax.mutation.flow.add_node(
             package=DYNTOOL_PACKAGE,
             version=DYNTOOL_VERSION,
+            node_name="DynTool",
             canvas_position=(460.0, 260.0),
         )
         # GAP-1: conditional dispatch edge LLMDriver -> DynTool (dormant unless the
